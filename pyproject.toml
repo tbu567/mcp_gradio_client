@@ -3,7 +3,7 @@ name = "mcp-gradio"
 dynamic = ["version"]
 description = "Gradio UI with MCP (Message Control Protocol) Client"
 authors = [
-    { name = "Joseph Ours", email = "joseph.ours@gmail.com" }
+    { name = "Joseph Ours" }
 ]
 dependencies = [
     "gradio",

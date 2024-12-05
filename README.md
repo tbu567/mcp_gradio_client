@@ -79,6 +79,13 @@ Key elements from the [Model Context Protocol](https://modelcontextprotocol.io/i
    ```env
    OPENAI_API_KEY=your_openai_api_key
    ```
+5. **Running the App**
+
+   Start the Gradio application:
+
+   ```bash
+   python gradio_ui.py
+   ```
 
 ## Understanding MCP STDIO vs SSE Servers
 See [stdio_versus_sse_mcp_servers.md](docs%2Fstdio_versus_sse_mcp_servers.md) for details on the differences between the two server types.
