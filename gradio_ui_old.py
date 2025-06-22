@@ -122,19 +122,21 @@ class GradioMCPInterface:
         tools = self.mcp_manager.get_all_langchain_tools()
         print(f"Initializing agent with {len(tools)} tools")
         if not tools:
+
             print("WARNING: No tools available for agent!")  # Debug print
             self._log("No tools available for agent", "WARNING")
             return
 
-        # Create system prompt
-        system_prompt = "You are a helpful AI assistant with access to various tools. Use the tools when appropriate to answer user questions."
-        
-        # Create agent with compatible parameters
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "You are a helpful AI assistant with access to various tools."),
+            ("placeholder", "{messages}")
+        ])
+
         self.agent_executor = create_react_agent(
             self.llm,
             tools,
             state_schema=AgentState,
-            # Remove state_modifier - use system message in prompts instead
+            state_modifier=prompt,
         )
 
     async def chat(
@@ -161,7 +163,7 @@ class GradioMCPInterface:
             self.mcp_manager.toggle_debug()
 
         # Update LLM if configuration changed or if LLM hasn't been initialized yet
-        if self.llm is None or model != self.current_model or temperature != self.current_temperature:
+        if self.llm is None or model != self.llm.model_name or temperature != self.llm.temperature:
             try:
                 self._log(f"Initializing LLM with model: {model} and temperature: {temperature}")
                 self._init_llm(model, temperature)
@@ -183,11 +185,8 @@ class GradioMCPInterface:
         else:
             thread_id = uuid.uuid4().hex
 
-        # Add system message to the beginning
-        system_message = HumanMessage(content="You are a helpful AI assistant with access to various tools. Use the tools when appropriate to answer user questions.")
-        
         input_messages = {
-            "messages": [system_message, HumanMessage(content=message)],
+            "messages": [HumanMessage(content=message)],
             "today_datetime": datetime.now().isoformat(),
         }
 
@@ -208,31 +207,29 @@ class GradioMCPInterface:
                             self._log(f"Tool Response: {message_chunk.content}", "TOOL")
                             self._log(f"Tool Name: {message_chunk.name}", "TOOL")
                             self._log(f"Tool ID: {message_chunk.id}", "TOOL")
-                        elif isinstance(message_chunk, AIMessage):
+                        else:
                             # Filter out raw tool output and any trailing characters
                             content = message_chunk.content
-                            if content and content.startswith('['):
+                            if content.startswith('['):
                                 # Find the end of the raw output by looking for ")]'"
                                 end_marker = "')]"
                                 if end_marker in content:
                                     content = content[content.find(end_marker) + len(end_marker):]
-                            if content:  # Only add non-empty content
-                                current_response += content
-                        
+                            current_response += content
                         new_history = formatted_history + [
                             {"role": "user", "content": message},
                             {"role": "assistant", "content": current_response}
                         ]
+                        # Use self._format_debug_logs() instead of getting from manager
                         yield "", new_history, self._format_debug_logs()
 
                 elif isinstance(chunk, tuple) and chunk[0] == "values":
-                    if 'messages' in chunk[1] and chunk[1]['messages']:
-                        last_message = chunk[1]['messages'][-1]
-                        if isinstance(last_message, AIMessage) and last_message.tool_calls:
-                            if self.debug_enabled:
-                                for tool_call in last_message.tool_calls:
-                                    self._log(f"Tool Call: {tool_call['name']} - ID: {tool_call['id']}", "TOOL")
-                                    self._log(f"Arguments: {tool_call['args']}", "TOOL")
+                    tool_message = chunk[1]['messages'][-1]
+                    if isinstance(tool_message, AIMessage) and tool_message.tool_calls:
+                        if self.debug_enabled:
+                            for tool_call in tool_message.tool_calls:
+                                self._log(f"Tool Call: {tool_call['name']} - ID: {tool_call['id']}", "TOOL")
+                                self._log(f"Arguments: {tool_call['args']}", "TOOL")
 
             # Save conversation ID
             try:

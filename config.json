@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "investor": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["investor-agent[ta]"],
+      "env": {}
+    }
+  }
+}
