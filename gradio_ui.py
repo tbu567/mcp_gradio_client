@@ -24,6 +24,7 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     is_last_step: IsLastStep
     today_datetime: str
+    remaining_steps: int  # Added required field
 
 
 class GradioMCPInterface:
@@ -189,6 +190,7 @@ class GradioMCPInterface:
         input_messages = {
             "messages": [system_message, HumanMessage(content=message)],
             "today_datetime": datetime.now().isoformat(),
+            "remaining_steps": 10,  # Initialize remaining_steps
         }
 
         current_response = ""
